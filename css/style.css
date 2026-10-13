@@ -13,7 +13,7 @@
   --danger: #c4320a;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #12151b;
     --card: #1b1f27;
     --text: #e6e9ef;
@@ -26,7 +26,23 @@
     --warn: #f3a35c;
     --warn-soft: #2e2216;
     --danger: #f2805f;
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b;
+  --card: #1b1f27;
+  --text: #e6e9ef;
+  --muted: #98a1b2;
+  --line: #2d333f;
+  --accent: #6c9cf0;
+  --accent-soft: #1e2a42;
+  --absent: #2a2418;
+  --absent-line: #6b5326;
+  --warn: #f3a35c;
+  --warn-soft: #2e2216;
+  --danger: #f2805f;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -44,6 +60,8 @@ h1 { font-size: 1.5rem; margin: 0 0 6px; }
 h2 { font-size: 1.15rem; margin: 0; }
 .page-head p { color: var(--muted); margin: 0 0 12px; }
 .actions, .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.add-form { display: flex; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.add-form input { flex: 1; min-width: 0; }
 .tools { margin: 12px 0 0; }
 
 button {
@@ -58,6 +76,7 @@ button {
 button.ghost { background: transparent; color: var(--accent); }
 button.danger { border-color: var(--danger); color: var(--danger); }
 button.small { padding: 4px 10px; font-size: 0.85rem; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .card {
   background: var(--card);

@@ -12,8 +12,10 @@
     <h1>결시 인정점 계산기</h1>
     <p>정기시험이나 수행평가를 보지 못한 항목은 <b>결시</b>로 바꾸고 평균을 넣으면, 학업성적관리규정 제22조에 따라 인정점과 최종 점수를 계산합니다.</p>
     <div class="actions">
-      <button data-act="add-subject">+ 과목 추가</button>
-      <button class="ghost" data-act="print">인쇄</button>
+      <form id="add-subject-form" class="add-form">
+        <input id="new-subject" type="text" placeholder="추가할 과목 이름 (예: 정보)" aria-label="추가할 과목 이름">
+        <button type="submit">+ 과목 추가</button>
+      </form>
       <button class="ghost danger" data-act="reset">초기화</button>
     </div>
   </header>

@@ -247,6 +247,33 @@
     else render();
   });
 
+  // 삭제·초기화는 한 번 더 눌러야 실행된다 (브라우저 확인창 대신)
+  function armed(b, text) {
+    if (b.dataset.armed === '1') return true;
+    b.dataset.armed = '1';
+    b.dataset.label = b.textContent;
+    b.textContent = text;
+    setTimeout(() => {
+      if (b.isConnected) { b.dataset.armed = ''; b.textContent = b.dataset.label; }
+    }, 3000);
+    return false;
+  }
+
+  document.addEventListener('submit', (e) => {
+    if (e.target.id !== 'add-subject-form') return;
+    e.preventDefault();
+    const input = document.getElementById('new-subject');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const ns = S.standard(name);
+    state.subjects.push(ns);
+    editing.add(ns.id);
+    input.value = '';
+    save();
+    render();
+    document.getElementById(`subj-${ns.id}`).scrollIntoView({ behavior: 'smooth' });
+  });
+
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
@@ -265,32 +292,21 @@
         break;
       case 'del-item': {
         const it = findItem(s, b.dataset.i);
-        if (!confirm(`'${it.name}' 항목을 삭제할까요?`)) return;
+        if (!armed(b, '한 번 더 누르면 삭제')) return;
         s.items = s.items.filter((i) => i !== it);
         s.items.forEach((i) => { if (Array.isArray(i.refs)) i.refs = i.refs.filter((x) => x !== it.id); });
         break;
       }
       case 'del-subject':
-        if (!confirm(`'${s.name}' 과목을 삭제할까요?`)) return;
+        if (!armed(b, '한 번 더 누르면 삭제')) return;
         state.subjects = state.subjects.filter((x) => x !== s);
         editing.delete(s.id);
         break;
-      case 'add-subject': {
-        const name = prompt('추가할 과목 이름', '');
-        if (!name) return;
-        const ns = S.standard(name.trim());
-        state.subjects.push(ns);
-        editing.add(ns.id);
-        break;
-      }
       case 'reset':
-        if (!confirm('입력한 점수와 과목 구성을 모두 지우고 처음 상태로 되돌릴까요?')) return;
+        if (!armed(b, '한 번 더 누르면 모두 지움')) return;
         state = { subjects: S.defaultSubjects() };
         editing.clear();
         break;
-      case 'print':
-        window.print();
-        return;
       default:
         return;
     }
