@@ -76,7 +76,9 @@
   // ⑦ 예시1-2: 기본점수 + {(배점 − 기본점수) × 응시 정기시험 원점수 합 ÷ 응시 정기시험 배점 합} × 인정 비율
   function byExamRate(item, exams, ratio) {
     const max = num(item.max);
-    const base = num(item.base) || 0;
+    // 기본점수는 만점의 basePct% (기본 30%)
+    const basePct = num(item.basePct) ?? 30;
+    const base = round2((max * basePct) / 100);
     const missing = exams.find((e) => !(num(e.max) > 0));
     if (missing) return { error: `정기시험 '${missing.name}'의 만점을 입력하세요.` };
     const scores = exams.map((e) => num(e.score));

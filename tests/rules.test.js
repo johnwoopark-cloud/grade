@@ -7,7 +7,7 @@ let n = 0;
 function it(name, type, o) {
   return {
     id: 'x' + n++, name, type,
-    weight: o.weight ?? 25, max: o.max ?? 100, base: o.base ?? 0,
+    weight: o.weight ?? 25, max: o.max ?? 100, basePct: o.basePct ?? 30,
     status: o.absent ? 'absent' : 'taken',
     reason: o.reason || 'sick', customRatio: o.customRatio ?? '',
     score: o.score ?? '', avg: o.avg ?? '', refs: o.refs ?? null, manual: o.manual ?? '',
@@ -77,8 +77,11 @@ test('⑦ 예시1-2 수행평가 모두 결시: 정기시험 점수 기준', () 
   const s = { items: [
     it('중간고사', 'exam', { score: 80, max: 100 }),
     it('기말고사', 'exam', { score: 90, max: 100 }),
-    it('수행평가1', 'perf', { absent: true, reason: 'sick', max: 20, base: 8 }),
+    it('수행평가1', 'perf', { absent: true, reason: 'sick', max: 20 }),
   ] };
+  // 기본점수 30% → 6. 6 + (20 − 6) × 170 ÷ 200 × 0.8 = 15.52
+  assert.equal(valueOf(s, 2), 15.52);
+  s.items[2].basePct = 40;
   // 8 + (20 − 8) × 170 ÷ 200 × 0.8 = 16.16
   assert.equal(valueOf(s, 2), 16.16);
 });

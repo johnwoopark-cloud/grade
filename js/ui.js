@@ -14,7 +14,14 @@
   function load() {
     try {
       const saved = localStorage.getItem(STORE);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const data = JSON.parse(saved);
+        data.subjects.forEach((s) => s.items.forEach((i) => {
+          if (i.basePct === undefined) i.basePct = 30;
+          delete i.base;
+        }));
+        return data;
+      }
     } catch (e) { /* 저장소를 쓸 수 없으면 기본값 */ }
     return { subjects: S.defaultSubjects() };
   }
@@ -156,7 +163,7 @@
       <div class="row">
         ${field(s, it, 'weight', it.weight, { label: '반영비율(%)' })}
         ${field(s, it, 'max', it.max, { label: '만점(배점)' })}
-        ${it.type === 'perf' ? field(s, it, 'base', it.base, { label: '기본점수' }) : ''}
+        ${it.type === 'perf' ? field(s, it, 'basePct', it.basePct, { label: '기본점수(만점의 %)' }) : ''}
         <button class="ghost danger" data-act="del-item" data-s="${s.id}" data-i="${it.id}">항목 삭제</button>
       </div>
     </div>`;

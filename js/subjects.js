@@ -1,6 +1,6 @@
 // 기본 과목 구성. 화면의 '구성 수정'에서 바꿀 수 있다.
 // type: 'exam' = 정기시험, 'perf' = 수행평가
-// weight = 반영비율(%), max = 만점(배점), base = 수행평가 기본점수
+// weight = 반영비율(%), max = 만점(배점), basePct = 수행평가 기본점수(만점의 %)
 (function (root) {
   'use strict';
 
@@ -8,9 +8,9 @@
     return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
-  function item(name, type, weight, max, base) {
+  function item(name, type, weight, max) {
     return {
-      id: uid(), name, type, weight, max, base: base || 0,
+      id: uid(), name, type, weight, max, basePct: 30,
       status: 'taken', reason: 'sick', customRatio: '',
       score: '', avg: '', refs: null, manual: '',
     };
