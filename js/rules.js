@@ -120,7 +120,7 @@
         return {
           committee: true,
           rule: '제22조 ⑧ · 학업성적관리위원회 심의',
-          note: '같은 학기에 이 과목의 정기시험·수행평가 점수가 모두 없어 학업성적관리위원회 심의로 정합니다. 학교에서 정한 인정점을 직접 입력하세요.',
+          note: '같은 학기에 이 과목의 정기시험·수행평가 점수가 모두 없어 학업성적관리위원회 심의로 정합니다. 아래 방법별 참고 점수를 확인하고, 학교에서 정한 인정점을 맨 아래에 입력하세요.',
         };
       }
       if (item.type === 'exam') {
@@ -169,7 +169,78 @@
     };
   }
 
-  const api = { REASONS, num, round2, ratioOf, isTaken, pickRefs, recognize, calculate };
+  // 제22조 ⑧ 위원회 심의용 참고값. 다른 과목에서 이름이 같은 정기시험을 '같은 정기시험'으로 본다.
+  // 점수는 모두 100점 기준 비율로 맞춘 뒤 결시 항목의 만점으로 환산한다.
+  function committeeOptions(subjects, subject, item) {
+    if (item.type !== 'exam') return [];
+    const max = num(item.max);
+    const ratio = item.committeeRatio === false ? 1 : ratioOf(item) ?? 1;
+    const f = (n) => String(round2(n));
+    const pct = (o) => (num(o.score) / num(o.max)) * 100;
+    const takenExam = (o) => o && o.type === 'exam' && isTaken(o) && num(o.max) > 0;
+    const sameExam = (s) => s.items.find((o) => o.type === 'exam' && o.name === item.name);
+    const others = subjects.filter((s) => s.id !== subject.id);
+    const mean = (a) => sum(a) / a.length;
+
+    function finish(o) {
+      if (o.pct === undefined) return o;
+      const base = (o.pct * max) / 100;
+      let value = round2(base * ratio);
+      if (value > max) value = max;
+      return { ...o, base: round2(base), value, ratio };
+    }
+
+    const opts = [];
+
+    // ① 같은 정기시험에서 응시한 동교과(군) 유사 과목 점수
+    const simChoices = others.filter((s) => takenExam(sameExam(s)));
+    const sim = simChoices.find((s) => s.id === item.similar);
+    opts.push({
+      key: 'similar',
+      label: '① 같은 시험의 비슷한 과목 점수',
+      choices: simChoices.map((s) => ({ id: s.id, name: s.name })),
+      selected: sim ? sim.id : '',
+      ...(sim
+        ? { pct: pct(sameExam(sim)), detail: `${sim.name} ${item.name} ${sameExam(sim).score}/${sameExam(sim).max}` }
+        : { error: simChoices.length ? '비슷한 과목을 고르세요.' : `다른 과목의 ${item.name} 점수가 없습니다.` }),
+    });
+
+    // ② 같은 정기시험에서 응시한 다른 과목 점수의 평균
+    const p2 = others.filter((s) => takenExam(sameExam(s))).map((s) => ({ s, p: pct(sameExam(s)) }));
+    opts.push(p2.length
+      ? { key: 'otherSubjects', label: '② 같은 시험의 다른 과목 점수 평균', pct: mean(p2.map((x) => x.p)),
+          detail: `${p2.map((x) => `${x.s.name} ${f(x.p)}`).join(', ')} → 평균 ${f(mean(p2.map((x) => x.p)))}` }
+      : { key: 'otherSubjects', label: '② 같은 시험의 다른 과목 점수 평균', error: `다른 과목의 ${item.name} 점수가 없습니다.` });
+
+    // ③ 같은 학기 다른 정기시험에서 응시한 과목 점수의 평균
+    const p3 = subjects.flatMap((s) => s.items
+      .filter((o) => o.name !== item.name && takenExam(o))
+      .map((o) => ({ s, o, p: pct(o) })));
+    opts.push(p3.length
+      ? { key: 'otherExams', label: '③ 같은 학기 다른 시험의 과목 점수 평균', pct: mean(p3.map((x) => x.p)),
+          detail: `${p3.map((x) => `${x.s.name} ${x.o.name} ${f(x.p)}`).join(', ')} → 평균 ${f(mean(p3.map((x) => x.p)))}` }
+      : { key: 'otherExams', label: '③ 같은 학기 다른 시험의 과목 점수 평균', error: '같은 학기 다른 정기시험 점수가 없습니다.' });
+
+    // ④ 같은 정기시험 해당 과목의 과목평균
+    const a4 = num(item.avg);
+    opts.push(a4 !== null
+      ? { key: 'subjectAvg', label: '④ 같은 시험 이 과목의 과목평균', pct: (a4 / max) * 100, detail: `${subject.name} ${item.name} 과목평균 ${a4}` }
+      : { key: 'subjectAvg', label: '④ 같은 시험 이 과목의 과목평균', error: `위의 '이 시험 과목평균'을 입력하세요.` });
+
+    // ⑤ 같은 정기시험 전 과목의 과목평균
+    const p5 = subjects
+      .map((s) => ({ s, o: sameExam(s) }))
+      .filter((x) => x.o && num(x.o.avg) !== null && num(x.o.max) > 0)
+      .map((x) => ({ ...x, p: (num(x.o.avg) / num(x.o.max)) * 100 }));
+    opts.push(p5.length
+      ? { key: 'allAvg', label: '⑤ 같은 시험 전 과목의 과목평균', pct: mean(p5.map((x) => x.p)),
+          detail: `${p5.map((x) => `${x.s.name} ${f(x.p)}`).join(', ')} → 평균 ${f(mean(p5.map((x) => x.p)))}` }
+      : { key: 'allAvg', label: '⑤ 같은 시험 전 과목의 과목평균', error: `각 과목 ${item.name}의 과목평균을 입력하세요.` });
+
+    return opts.map(finish);
+  }
+
+  const api = { REASONS, num, round2, ratioOf, isTaken, pickRefs, recognize, calculate, committeeOptions };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.GradeRules = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -51,12 +51,44 @@
 
   // ---------- 렌더링 ----------
 
+  function committeeHTML(s, it) {
+    if (it.type !== 'exam') {
+      return '<div class="recog-refs cm-note">위원회 예시는 정기시험 기준이라 수행평가는 참고값을 계산하지 않습니다. 학교에서 정한 값을 입력하세요.</div>';
+    }
+    const opts = R.committeeOptions(state.subjects, s, it);
+    const ratioOn = it.committeeRatio !== false;
+    const pctLabel = Math.round((R.ratioOf(it) ?? 1) * 100);
+    const rows = opts.map((o) => {
+      const pick = o.choices
+        ? `<select class="cm-pick" data-s="${s.id}" data-i="${it.id}" data-f="similar" data-key="${s.id}:${it.id}:similar" aria-label="비슷한 과목">
+            <option value="">과목 선택</option>
+            ${o.choices.map((c) => `<option value="${c.id}"${c.id === o.selected ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}
+          </select>`
+        : '';
+      const val = o.error
+        ? `<div class="cm-err">${esc(o.error)}</div>`
+        : `<div class="cm-detail">${esc(o.detail)}${ratioOn && o.ratio !== 1 ? ` · ${fmt(o.base)} × ${o.ratio}` : ''}</div>`;
+      const use = o.error ? '' : `<button class="ghost small" data-act="use-committee" data-s="${s.id}" data-i="${it.id}" data-v="${o.value}">이 값 사용</button>`;
+      return `<div class="cm-row">
+        <div class="cm-main"><div class="cm-label">${esc(o.label)}</div>${pick}${val}</div>
+        <div class="cm-side"><b>${o.error ? '–' : fmt(o.value)}</b>${use}</div>
+      </div>`;
+    }).join('');
+    return `<div class="cm">
+      <div class="cm-head"><span>위원회 심의 방법별 참고 점수</span>
+        <label class="chk"><input type="checkbox" data-s="${s.id}" data-i="${it.id}" data-f="committeeRatio"
+          data-key="${s.id}:${it.id}:committeeRatio"${ratioOn ? ' checked' : ''}> 인정 비율 ${pctLabel}% 적용</label></div>
+      ${rows}
+      <div class="recog-refs">다른 과목에서 이름이 같은 시험(${esc(it.name)})을 같은 시험으로 봅니다. 확정 점수는 위원회가 정합니다.</div>
+    </div>`;
+  }
+
   function recogHTML(s, it, r) {
     const rc = r.recog;
     if (!rc) return '';
     if (rc.error) return `<div class="recog warn">${esc(rc.error)}</div>`;
     if (rc.committee) {
-      return `<div class="recog warn"><b>${esc(rc.rule)}</b><br>${esc(rc.note)}</div>`;
+      return `<div class="recog warn"><b>${esc(rc.rule)}</b><br>${esc(rc.note)}</div>${committeeHTML(s, it)}`;
     }
     return `<div class="recog">
       <div class="recog-head"><span>인정점</span><b>${fmt(rc.value)}</b></div>
@@ -232,6 +264,7 @@
       it.refs = t.checked ? [...new Set([...it.refs, id])] : it.refs.filter((x) => x !== id);
       return;
     }
+    if (f === 'committeeRatio') { it.committeeRatio = t.checked; return; }
     it[f] = t.value;
     if (f === 'type') it.refs = null;
   }
@@ -282,6 +315,11 @@
       case 'status': {
         const it = findItem(s, b.dataset.i);
         it.status = b.dataset.v;
+        break;
+      }
+      case 'use-committee': {
+        const it = findItem(s, b.dataset.i);
+        it.manual = b.dataset.v;
         break;
       }
       case 'toggle-edit':

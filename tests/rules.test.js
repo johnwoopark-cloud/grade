@@ -128,3 +128,32 @@ test('최종 점수: 반영비율로 환산해 합산', () => {
   assert.equal(c.total, 68.43);
   assert.equal(c.weightSum, 100);
 });
+
+test('⑧ 위원회 방법별 참고 점수', () => {
+  const kor = { id: 'kor', name: '국어', items: [
+    it('중간고사', 'exam', { absent: true, reason: 'sick', avg: 60 }),
+    it('기말고사', 'exam', { absent: true, reason: 'sick', avg: 70 }),
+    it('수행평가1', 'perf', { absent: true, max: 20 }),
+  ] };
+  const eng = { id: 'eng', name: '영어', items: [
+    it('중간고사', 'exam', { score: 80, avg: 50 }),
+    it('기말고사', 'exam', { score: 90, avg: 55 }),
+  ] };
+  const math = { id: 'math', name: '수학', items: [
+    it('중간고사', 'exam', { score: 60, avg: 40 }),
+    it('기말고사', 'exam', { score: 70 }),
+  ] };
+  const subjects = [kor, eng, math];
+  kor.items[0].similar = 'eng';
+  const o = Object.fromEntries(R.committeeOptions(subjects, kor, kor.items[0]).map((x) => [x.key, x]));
+  assert.equal(o.similar.value, 64);          // 80 × 0.8
+  assert.equal(o.otherSubjects.base, 70);     // (80 + 60) / 2
+  assert.equal(o.otherSubjects.value, 56);
+  assert.equal(o.otherExams.base, 80);        // 기말: (90 + 70) / 2
+  assert.equal(o.subjectAvg.base, 60);
+  assert.equal(o.allAvg.base, 50);            // (60 + 50 + 40) / 3
+  kor.items[0].committeeRatio = false;
+  const o2 = Object.fromEntries(R.committeeOptions(subjects, kor, kor.items[0]).map((x) => [x.key, x]));
+  assert.equal(o2.otherSubjects.value, 70);
+  assert.deepEqual(R.committeeOptions(subjects, kor, kor.items[2]), []);
+});
