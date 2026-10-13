@@ -116,7 +116,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .recog-head { display: flex; justify-content: space-between; align-items: baseline; }
 .recog-head b { font-size: 1.3rem; color: var(--accent); }
 .recog-rule { color: var(--muted); font-size: 0.8rem; }
-.recog-formula { font-variant-numeric: tabular-nums; margin-top: 4px; word-break: break-all; }
+.recog-formula { font-variant-numeric: tabular-nums; margin-top: 4px; word-break: keep-all; overflow-wrap: break-word; }
 .recog-refs { color: var(--muted); font-size: 0.8rem; }
 
 .reflected { text-align: right; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }

@@ -77,6 +77,11 @@
     return `<div class="refs"><span>기준으로 쓸 ${TYPE_LABEL[it.type]}</span>${boxes}</div>`;
   }
 
+  // 수행평가를 모두 결시해 정기시험 점수로 계산할 때(⑦ 예시1-2)는 평균이 필요 없다
+  function needsAvg(s, it) {
+    return it.type === 'exam' || R.pickRefs(s, it).candidates.length > 0;
+  }
+
   function itemHTML(s, it, r) {
     const absent = it.status === 'absent';
     const meta = `${TYPE_LABEL[it.type]} · 반영 ${esc(it.weight)}% · 만점 ${esc(it.max)}`;
@@ -91,7 +96,7 @@
       body = `<div class="row">
         ${select(s, it, 'reason', it.reason, Object.entries(R.REASONS).map(([k, v]) => [k, v.label]), '결시 사유')}
         ${it.reason === 'custom' ? field(s, it, 'customRatio', it.customRatio, { label: '인정 비율(%)' }) : ''}
-        ${field(s, it, 'avg', it.avg, { label: it.type === 'exam' ? '이 시험 과목평균' : '이 영역 평균' })}
+        ${needsAvg(s, it) ? field(s, it, 'avg', it.avg, { label: it.type === 'exam' ? '이 시험 과목평균' : '이 영역 평균' }) : ''}
       </div>
       ${refsHTML(s, it)}
       <div data-out="${s.id}:${it.id}:recog">${recogHTML(s, it, r)}</div>
