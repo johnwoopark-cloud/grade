@@ -1,0 +1,8 @@
+{
+  "name": "grade",
+  "private": true,
+  "description": "결시 인정점 계산기",
+  "scripts": {
+    "test": "node --test tests/rules.test.js"
+  }
+}
