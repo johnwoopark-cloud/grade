@@ -104,6 +104,18 @@ test('⑧ 점수가 하나도 없으면 위원회 심의 + 직접 입력값 사�
   assert.equal(c.complete, true);
 });
 
+test('응시인데 원점수가 비어 있으면 위원회가 아니라 입력 요청', () => {
+  const s = { items: [
+    it('중간고사', 'exam', { score: 80 }),
+    it('기말고사', 'exam', {}),
+    it('수행평가1', 'perf', { absent: true, max: 20 }),
+    it('수행평가2', 'perf', { absent: true, max: 20 }),
+  ] };
+  const r = R.recognize(s, s.items[2]);
+  assert.ok(!r.committee);
+  assert.match(r.error, /기말고사/);
+});
+
 test('최종 점수: 반영비율로 환산해 합산', () => {
   const s = { items: [
     it('중간고사', 'exam', { score: 66.9, avg: 68.72, weight: 30 }),

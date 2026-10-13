@@ -94,6 +94,16 @@
     const max = num(item.max);
     if (!(max > 0)) return { error: `'${item.name}'의 만점을 입력하세요.` };
 
+    // 응시로 되어 있는데 원점수가 비어 있으면, 점수가 '없는' 것과 구분해 먼저 입력을 요청한다
+    const blank = subject.items.filter(
+      (o) => o.id !== item.id && o.status === 'taken' && num(o.score) === null
+    );
+    if (blank.length) {
+      return {
+        error: `먼저 ${blank.map((o) => `'${o.name}'`).join(', ')}의 원점수를 입력하세요. 보지 못한 항목이면 결시로 바꾸세요.`,
+      };
+    }
+
     let result;
     const same = pickRefs(subject, item);
     if (same.candidates.length) {
