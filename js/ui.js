@@ -14,20 +14,95 @@
   function load() {
     try {
       const saved = localStorage.getItem(STORE);
-      if (saved) {
-        const data = JSON.parse(saved);
-        data.subjects.forEach((s) => s.items.forEach((i) => {
-          if (i.basePct === undefined) i.basePct = 30;
-          delete i.base;
-        }));
-        return data;
-      }
+      if (saved) return migrate(JSON.parse(saved));
     } catch (e) { /* 저장소를 쓸 수 없으면 기본값 */ }
     return { subjects: S.defaultSubjects() };
   }
 
-  function save() {
+  function migrate(data) {
+    data.subjects.forEach((s) => s.items.forEach((i) => {
+      if (i.basePct === undefined) i.basePct = 30;
+      delete i.base;
+    }));
+    return data;
+  }
+
+  function saveLocal() {
     try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* 무시 */ }
+  }
+
+  function save() {
+    state.updatedAt = Date.now();
+    saveLocal();
+    saveCloud();
+  }
+
+  // ---------- 계정 저장 (claude.ai 링크로 열었을 때만) ----------
+  // 본인만 볼 수 있는 data/users/<id>/calculator 문서에 저장해 다른 컴퓨터에서도 이어서 본다.
+
+  let cloud = null;
+  let cloudTimer = null;
+  const SYNCED = '계정에 저장됨 · 같은 계정으로 열면 다른 컴퓨터에서도 보입니다';
+
+  function setSync(text) {
+    const el = document.getElementById('sync-status');
+    if (el) el.textContent = text;
+  }
+
+  function hasData(st) {
+    return !!st && Array.isArray(st.subjects) && st.subjects.some((s) => s.items.some((i) =>
+      i.status === 'absent' || [i.score, i.avg, i.manual].some((v) => v !== '' && v != null)));
+  }
+
+  const plain = (v) => JSON.parse(JSON.stringify(v));
+
+  async function pushCloud() {
+    await cloud.set({ state: plain(state) });
+  }
+
+  function saveCloud() {
+    if (!cloud) return;
+    clearTimeout(cloudTimer);
+    setSync('저장 중…');
+    cloudTimer = setTimeout(async () => {
+      try {
+        await pushCloud();
+        setSync(SYNCED);
+      } catch (e) {
+        setSync('계정에 저장하지 못했습니다. 이 기기에는 저장되어 있습니다.');
+      }
+    }, 800);
+  }
+
+  async function initCloud() {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    setSync('계정 저장소에 연결하는 중…');
+    try {
+      const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      const uid = db && user ? await user.id() : null;
+      if (!uid) {
+        setSync('이 기기에만 저장됩니다 (claude.ai에 로그인하면 계정에 저장됩니다)');
+        return;
+      }
+      const ref = db.doc('data/users/' + uid + '/calculator');
+      const snap = await ref.get();
+      const remote = snap.exists ? snap.data().state : null;
+      cloud = ref;
+      // 한쪽에만 입력값이 있으면 그쪽을, 둘 다 있으면 더 최근에 고친 쪽을 쓴다
+      const useRemote = remote && hasData(remote) &&
+        (!hasData(state) || (remote.updatedAt || 0) >= (state.updatedAt || 0));
+      if (useRemote) {
+        state = migrate(plain(remote));
+        saveLocal();
+        render();
+      } else {
+        await pushCloud();
+      }
+      setSync(SYNCED);
+    } catch (e) {
+      cloud = null;
+      setSync('이 기기에만 저장됩니다');
+    }
   }
 
   function esc(v) {
@@ -381,4 +456,5 @@
   });
 
   render();
+  initCloud();
 })();
