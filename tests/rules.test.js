@@ -175,3 +175,14 @@ test('수행평가 결시를 기본점수 + 시험 점수로 계산 (perfMethod:
   // 반영비율 각 25%: 21.25 + 22.75 + 15.86/20×25 + 18/20×25 = 86.325
   assert.equal(R.calculate(s, { perfMethod: 'base' }).total, 86.33);
 });
+
+test('수행평가 결시는 기본점수(만점의 30%)만 (perfMethod: basic)', () => {
+  const s = { items: [
+    it('중간고사', 'exam', { score: 85 }),
+    it('기말고사', 'exam', {}),
+    it('수행평가1', 'perf', { absent: true, reason: 'sick', max: 20 }),
+    it('수행평가2', 'perf', { absent: true, reason: 'approved', max: 50, basePct: 40 }),
+  ] };
+  assert.equal(R.recognize(s, s.items[2], { perfMethod: 'basic' }).value, 6);
+  assert.equal(R.recognize(s, s.items[3], { perfMethod: 'basic' }).value, 20);
+});

@@ -100,8 +100,8 @@
     return `<div class="recog">
       <div class="recog-head"><span>인정점</span><b>${fmt(rc.value)}</b></div>
       <div class="recog-rule">${esc(rc.rule)}</div>
-      <div class="recog-formula">${esc(rc.formula)} ≈ ${Number(rc.raw.toFixed(4))}${rc.capped ? ' → 만점 초과로 만점 처리' : ` → ${fmt(rc.value)}`}</div>
-      <div class="recog-refs">기준: ${esc(rc.refsUsed.join(', '))}</div>
+      <div class="recog-formula">${esc(rc.formula)} ${rc.simple ? `= ${fmt(rc.value)}` : `≈ ${Number(rc.raw.toFixed(4))}${rc.capped ? ' → 만점 초과로 만점 처리' : ` → ${fmt(rc.value)}`}`}</div>
+      ${rc.refsUsed.length ? `<div class="recog-refs">기준: ${esc(rc.refsUsed.join(', '))}</div>` : ''}
     </div>`;
   }
 
@@ -118,13 +118,14 @@
 
   // 수행평가를 모두 결시해 정기시험 점수로 계산할 때(⑦ 예시1-2)는 평균이 필요 없다
   function calcOpts() {
-    return { perfMethod: state.perfMethod || 'base' };
+    return { perfMethod: state.perfMethod || 'basic' };
   }
 
-  // 수행평가 결시를 기본점수 + 정기시험 점수로 계산하는 경우
+  // 수행평가 결시를 기본점수(+ 정기시험 점수)로 계산해 평균·기준 영역이 필요 없는 경우
   function perfByBase(s, it) {
-    return it.type === 'perf' && calcOpts().perfMethod === 'base'
-      && s.items.some((o) => o.type === 'exam' && R.isTaken(o));
+    if (it.type !== 'perf') return false;
+    const m = calcOpts().perfMethod;
+    return m === 'basic' || (m === 'base' && s.items.some((o) => o.type === 'exam' && R.isTaken(o)));
   }
 
   function needsAvg(s, it) {
@@ -134,6 +135,7 @@
 
   function itemHTML(s, it, r) {
     const absent = it.status === 'absent';
+    const basicOnly = it.type === 'perf' && calcOpts().perfMethod === 'basic';
     const meta = `${TYPE_LABEL[it.type]} · 반영 ${esc(it.weight)}% · 만점 ${esc(it.max)}`;
     let body = '';
     if (!absent) {
@@ -144,8 +146,8 @@
       if (r.overMax) body += '<div class="recog warn">원점수가 만점보다 큽니다.</div>';
     } else {
       body = `<div class="row">
-        ${select(s, it, 'reason', it.reason, Object.entries(R.REASONS).map(([k, v]) => [k, v.label]), '결시 사유')}
-        ${it.reason === 'custom' ? field(s, it, 'customRatio', it.customRatio, { label: '인정 비율(%)' }) : ''}
+        ${basicOnly ? '' : select(s, it, 'reason', it.reason, Object.entries(R.REASONS).map(([k, v]) => [k, v.label]), '결시 사유')}
+        ${!basicOnly && it.reason === 'custom' ? field(s, it, 'customRatio', it.customRatio, { label: '인정 비율(%)' }) : ''}
         ${needsAvg(s, it) ? field(s, it, 'avg', it.avg, { label: it.type === 'exam' ? '이 시험 과목평균' : '이 영역 평균' }) : ''}
       </div>
       ${refsHTML(s, it)}
@@ -239,8 +241,8 @@
     const caret = active && active.type === 'text' ? active.selectionStart : null;
     app.innerHTML = state.subjects.map(subjectHTML).join('');
     summary.innerHTML = summaryHTML();
-    const m = calcOpts().perfMethod;
-    document.querySelectorAll('[data-act="perf-method"]').forEach((b) => b.classList.toggle('on', b.dataset.v === m));
+    const pm = document.getElementById('perf-method');
+    if (pm) pm.value = calcOpts().perfMethod;
     if (key) {
       const el = document.querySelector(`[data-key="${CSS.escape(key)}"]`);
       if (el) {
@@ -312,6 +314,12 @@
     return false;
   }
 
+  document.getElementById('perf-method').addEventListener('change', (e) => {
+    state.perfMethod = e.target.value;
+    save();
+    render();
+  });
+
   document.addEventListener('submit', (e) => {
     if (e.target.id !== 'add-subject-form') return;
     e.preventDefault();
@@ -342,9 +350,6 @@
         it.manual = b.dataset.v;
         break;
       }
-      case 'perf-method':
-        state.perfMethod = b.dataset.v;
-        break;
       case 'toggle-edit':
         editing.has(s.id) ? editing.delete(s.id) : editing.add(s.id);
         break;

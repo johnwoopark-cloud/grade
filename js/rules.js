@@ -90,13 +90,24 @@
     };
   }
 
-  // opts.perfMethod: 'area' = 규정 순서대로 다른 수행평가 영역 우선 (기본)
-  //                  'base' = 정기시험 점수가 있으면 기본점수 + 정기시험 점수 비율(⑦ 예시1-2)로 계산
+  // opts.perfMethod: 'basic' = 수행평가 결시는 기본점수(만점의 basePct%)만 부여
+  //                  'base'  = 정기시험 점수가 있으면 기본점수 + 정기시험 점수 비율(⑦ 예시1-2)로 계산
+  //                  'area'  = 규정 순서대로 다른 수행평가 영역 우선 (지정하지 않으면 이 방식)
   function recognize(subject, item, opts = {}) {
     const ratio = ratioOf(item);
     if (ratio === null) return { error: '인정 비율(%)을 입력하세요.' };
     const max = num(item.max);
     if (!(max > 0)) return { error: `'${item.name}'의 만점을 입력하세요.` };
+
+    if (item.type === 'perf' && opts.perfMethod === 'basic') {
+      const basePct = num(item.basePct) ?? 30;
+      const value = round2((max * basePct) / 100);
+      return {
+        value, raw: value, simple: true, refsUsed: [],
+        rule: `수행평가 결시 · 기본점수 (만점의 ${basePct}%)`,
+        formula: `${max} × ${basePct}%`,
+      };
+    }
 
     // 응시로 되어 있는데 원점수가 비어 있으면, 점수가 '없는' 것과 구분해 먼저 입력을 요청한다
     const blank = subject.items.filter(

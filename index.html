@@ -24,13 +24,14 @@
     <section class="card" aria-label="요약">
       <h2>과목별 최종 점수</h2>
       <div id="summary"></div>
-      <div class="method">
+      <label class="method" for="perf-method">
         <span>수행평가 결시 계산</span>
-        <div class="seg">
-          <button data-act="perf-method" data-v="base">기본점수 + 시험 점수</button>
-          <button data-act="perf-method" data-v="area">다른 수행평가 영역</button>
-        </div>
-      </div>
+        <select id="perf-method">
+          <option value="basic">기본점수만 (만점의 30%)</option>
+          <option value="base">기본점수 + 정기시험 점수 비율</option>
+          <option value="area">다른 수행평가 영역 기준</option>
+        </select>
+      </label>
     </section>
 
     <div id="app"></div>
@@ -43,7 +44,7 @@
         <li>응시한 정기시험이 있으면: 응시 점수 × (결시고사 과목평균 ÷ 응시고사 과목평균) × 인정 비율</li>
         <li>정기시험 점수가 없으면: 응시한 수행평가 원점수 합 × (결시고사 과목평균 ÷ 응시 수행평가 영역 평균의 합) × 인정 비율</li>
       </ol>
-      <p><b>수행평가 결시</b></p>
+      <p><b>수행평가 결시</b>: 기본 설정은 <b>기본점수(만점의 30%)만</b> 부여합니다. 위쪽 '수행평가 결시 계산'에서 아래 규정 계산식으로 바꿀 수 있습니다.</p>
       <ol>
         <li>'다른 수행평가 영역' 방식에서 응시한 다른 수행평가 영역이 있으면: 응시 영역 원점수 합 × (결시 영역 평균 ÷ 응시 영역 평균의 합) × 인정 비율.
           교과에서 기준 영역을 정해 둔 경우(예시2)에는 '기준으로 쓸 수행평가'에서 해당 영역만 선택합니다.</li>
