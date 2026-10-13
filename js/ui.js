@@ -107,7 +107,7 @@
 
   function refsHTML(s, it) {
     const { candidates } = R.pickRefs(s, it);
-    if (candidates.length < 2) return '';
+    if (candidates.length < 2 || perfByBase(s, it)) return '';
     const boxes = candidates.map((o) => {
       const on = !Array.isArray(it.refs) || it.refs.includes(o.id);
       return `<label class="chk"><input type="checkbox" data-s="${s.id}" data-i="${it.id}" data-f="ref"
@@ -117,7 +117,18 @@
   }
 
   // 수행평가를 모두 결시해 정기시험 점수로 계산할 때(⑦ 예시1-2)는 평균이 필요 없다
+  function calcOpts() {
+    return { perfMethod: state.perfMethod || 'base' };
+  }
+
+  // 수행평가 결시를 기본점수 + 정기시험 점수로 계산하는 경우
+  function perfByBase(s, it) {
+    return it.type === 'perf' && calcOpts().perfMethod === 'base'
+      && s.items.some((o) => o.type === 'exam' && R.isTaken(o));
+  }
+
   function needsAvg(s, it) {
+    if (perfByBase(s, it)) return false;
     return it.type === 'exam' || R.pickRefs(s, it).candidates.length > 0;
   }
 
@@ -176,7 +187,7 @@
   }
 
   function subjectHTML(s) {
-    const c = R.calculate(s);
+    const c = R.calculate(s, calcOpts());
     const isEdit = editing.has(s.id);
     const items = s.items.map((it, k) => (isEdit ? editItemHTML(s, it) : itemHTML(s, it, c.items[k]))).join('');
     const head = isEdit
@@ -200,7 +211,7 @@
 
   function summaryHTML() {
     const rows = state.subjects.map((s) => {
-      const c = R.calculate(s);
+      const c = R.calculate(s, calcOpts());
       const absent = s.items.filter((i) => i.status === 'absent').length;
       return `<tr><td><a href="#subj-${s.id}">${esc(s.name)}</a></td>
         <td class="num">${fmt(c.total)}${c.complete ? '' : ' <span class="pending">입력 중</span>'}</td>
@@ -212,7 +223,7 @@
   // 입력에 따라 화면 구성(기준 항목 체크박스, 직접 입력칸, 경고)이 바뀌는지 판단하는 값
   function layoutKey() {
     return state.subjects.map((s) => {
-      const c = R.calculate(s);
+      const c = R.calculate(s, calcOpts());
       return s.items.map((it, k) => {
         const r = c.items[k];
         return [R.isTaken(it), !!(r.recog && r.recog.committee), r.overMax].map(Number).join('');
@@ -228,6 +239,8 @@
     const caret = active && active.type === 'text' ? active.selectionStart : null;
     app.innerHTML = state.subjects.map(subjectHTML).join('');
     summary.innerHTML = summaryHTML();
+    const m = calcOpts().perfMethod;
+    document.querySelectorAll('[data-act="perf-method"]').forEach((b) => b.classList.toggle('on', b.dataset.v === m));
     if (key) {
       const el = document.querySelector(`[data-key="${CSS.escape(key)}"]`);
       if (el) {
@@ -240,7 +253,7 @@
   // 입력 중에는 입력칸을 다시 그리지 않고 결과만 갱신한다
   function updateResults() {
     state.subjects.forEach((s) => {
-      const c = R.calculate(s);
+      const c = R.calculate(s, calcOpts());
       s.items.forEach((it, k) => {
         const r = c.items[k];
         const refl = document.querySelector(`[data-out="${s.id}:${it.id}:refl"]`);
@@ -329,6 +342,9 @@
         it.manual = b.dataset.v;
         break;
       }
+      case 'perf-method':
+        state.perfMethod = b.dataset.v;
+        break;
       case 'toggle-edit':
         editing.has(s.id) ? editing.delete(s.id) : editing.add(s.id);
         break;

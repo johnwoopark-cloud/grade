@@ -160,3 +160,18 @@ test('⑧ 위원회 방법별 참고 점수', () => {
   assert.equal(o2.otherSubjects.value, 70);
   assert.deepEqual(R.committeeOptions(subjects, kor, kor.items[2]), []);
 });
+
+test('수행평가 결시를 기본점수 + 시험 점수로 계산 (perfMethod: base)', () => {
+  const s = { items: [
+    it('중간고사', 'exam', { score: 85 }),
+    it('기말고사', 'exam', { score: 91 }),
+    it('수행평가1', 'perf', { absent: true, reason: 'sick', max: 20, avg: 15 }),
+    it('수행평가2', 'perf', { score: 18, avg: 16, max: 20 }),
+  ] };
+  // 다른 영역 방식: 18 × 15 ÷ 16 × 0.8 = 13.5
+  assert.equal(R.recognize(s, s.items[2]).value, 13.5);
+  // 기본점수 방식: 6 + 14 × 176 ÷ 200 × 0.8 = 15.856
+  assert.equal(R.recognize(s, s.items[2], { perfMethod: 'base' }).value, 15.86);
+  // 반영비율 각 25%: 21.25 + 22.75 + 15.86/20×25 + 18/20×25 = 86.325
+  assert.equal(R.calculate(s, { perfMethod: 'base' }).total, 86.33);
+});

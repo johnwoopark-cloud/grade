@@ -90,7 +90,9 @@
     };
   }
 
-  function recognize(subject, item) {
+  // opts.perfMethod: 'area' = 규정 순서대로 다른 수행평가 영역 우선 (기본)
+  //                  'base' = 정기시험 점수가 있으면 기본점수 + 정기시험 점수 비율(⑦ 예시1-2)로 계산
+  function recognize(subject, item, opts = {}) {
     const ratio = ratioOf(item);
     if (ratio === null) return { error: '인정 비율(%)을 입력하세요.' };
     const max = num(item.max);
@@ -108,7 +110,11 @@
 
     let result;
     const same = pickRefs(subject, item);
-    if (same.candidates.length) {
+    const examsTaken = subject.items.filter((o) => o.type === 'exam' && isTaken(o));
+    if (item.type === 'perf' && opts.perfMethod === 'base' && examsTaken.length) {
+      result = byExamRate(item, examsTaken, ratio);
+      result.rule = '제22조 ⑦ 예시1-2 · 기본점수 + 응시한 정기시험 점수 비율';
+    } else if (same.candidates.length) {
       if (!same.refs.length) return { error: '기준으로 쓸 항목을 하나 이상 선택하세요.' };
       result = byAverageRatio(item, same.refs, ratio);
       result.rule =
@@ -144,14 +150,14 @@
     return result;
   }
 
-  function calculate(subject) {
+  function calculate(subject, opts = {}) {
     const items = subject.items.map((item) => {
       const max = num(item.max);
       const weight = num(item.weight);
       let effective = null;
       let recog = null;
       if (item.status === 'absent') {
-        recog = recognize(subject, item);
+        recog = recognize(subject, item, opts);
         if (recog.committee) effective = num(item.manual);
         else if (!recog.error) effective = recog.value;
       } else {
