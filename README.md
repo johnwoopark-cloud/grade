@@ -30,3 +30,7 @@
 - `js/rules.js` — 인정점 산출 규칙과 최종 점수 계산
 - `js/ui.js` — 화면
 - `tests/rules.test.js` — 규정 캡처의 예시 계산 검증 (`npm test`)
+
+## 스프레드시트 버전
+`sheet/결시인정점계산기.xlsx`는 구글 드라이브에 올려 Google 스프레드시트로 열 수 있는 같은 계산기입니다(정기시험 결시 ⑥항, 수행평가 결시는 만점의 30%).
+Claude 계정 없이도 공유해 함께 볼 수 있습니다. 다시 만들려면 `python3 sheet/build_sheet.py sheet/결시인정점계산기.xlsx`.
