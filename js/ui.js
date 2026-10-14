@@ -37,12 +37,12 @@
     saveCloud();
   }
 
-  // ---------- 계정 저장 (claude.ai 링크로 열었을 때만) ----------
-  // 본인만 볼 수 있는 data/users/<id>/calculator 문서에 저장해 다른 컴퓨터에서도 이어서 본다.
+  // ---------- 공용 저장 (claude.ai 링크로 열었을 때만) ----------
+  // shared/calculator 문서에 저장해 다른 컴퓨터, 공유받은 가족도 같은 점수를 본다.
 
   let cloud = null;
   let cloudTimer = null;
-  const SYNCED = '계정에 저장됨 · 같은 계정으로 열면 다른 컴퓨터에서도 보입니다';
+  const SYNCED = '저장됨 · 이 링크를 여는 다른 컴퓨터와 공유받은 사람에게도 같은 내용이 보입니다';
 
   function setSync(text) {
     const el = document.getElementById('sync-status');
@@ -76,17 +76,27 @@
 
   async function initCloud() {
     if (!window.claude || typeof window.claude.use !== 'function') return;
-    setSync('계정 저장소에 연결하는 중…');
+    setSync('저장소에 연결하는 중…');
     try {
       const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-      const uid = db && user ? await user.id() : null;
-      if (!uid) {
-        setSync('이 기기에만 저장됩니다 (claude.ai에 로그인하면 계정에 저장됩니다)');
+      if (!db) {
+        setSync('이 기기에만 저장됩니다 (claude.ai에 로그인하면 함께 저장됩니다)');
         return;
       }
-      const ref = db.doc('data/users/' + uid + '/calculator');
+      // 이 페이지를 공유받은 가족도 같은 점수를 보도록 공용 문서 하나에 저장한다
+      const ref = db.doc('shared/calculator');
       const snap = await ref.get();
-      const remote = snap.exists ? snap.data().state : null;
+      let remote = snap.exists ? snap.data().state : null;
+      let fromShared = !!remote;
+      // 예전 버전은 본인 전용 위치에 저장했으므로, 공용 문서가 비어 있으면 그 값을 옮겨 온다
+      const uid = !hasData(remote) && user ? await user.id() : null;
+      if (uid) {
+        const mine = await db.doc('data/users/' + uid + '/calculator').get();
+        if (mine.exists && hasData(mine.data().state)) {
+          remote = mine.data().state;
+          fromShared = false;
+        }
+      }
       cloud = ref;
       // 한쪽에만 입력값이 있으면 그쪽을, 둘 다 있으면 더 최근에 고친 쪽을 쓴다
       const useRemote = remote && hasData(remote) &&
@@ -95,8 +105,15 @@
         state = migrate(plain(remote));
         saveLocal();
         render();
-      } else {
-        await pushCloud();
+      }
+      if (!useRemote || !fromShared) {
+        try {
+          await pushCloud();
+        } catch (e) {
+          cloud = null;
+          setSync('보기 전용입니다. 고친 내용은 이 기기에만 저장됩니다.');
+          return;
+        }
       }
       setSync(SYNCED);
     } catch (e) {
